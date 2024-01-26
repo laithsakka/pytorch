@@ -164,6 +164,7 @@ class BuiltinVariable(VariableTracker):
     @functools.lru_cache(None)
     def _fx_graph_functions():
         fns = {
+            operator.truth,
             operator.abs,
             operator.pos,
             operator.neg,
@@ -841,6 +842,13 @@ class BuiltinVariable(VariableTracker):
         # Call arg.__abs__()
         abs_method = BuiltinVariable(getattr).call_function(
             tx, [arg, ConstantVariable.create("__abs__")], {}
+        )
+        return abs_method.call_function(tx, [], {})
+
+    def call_truth(self, tx, arg: "VariableTracker"):
+        # Call arg.__bool__()
+        abs_method = BuiltinVariable(getattr).call_function(
+            tx, [arg, ConstantVariable.create("__bool__")], {}
         )
         return abs_method.call_function(tx, [], {})
 
