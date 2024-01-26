@@ -221,6 +221,9 @@ class SymNode:
     def pos(self) -> "SymNode":
         return self._pos()  # type: ignore[attr-defined]
 
+    def bool(self) -> "SymNode":
+        return self._bool()  # type: ignore[attr-defined]
+
     def round(self, ndigits=None) -> "SymNode":
         return self._round(ndigits)  # type: ignore[attr-defined]
 
@@ -409,7 +412,11 @@ class SymNode:
 
 
 # TODO: this probably needs the sizes-strides eval functions
+# Those functions are the eval functions that are used to evaluate the hints, they are expected
+# to operatoe on concrete python values.
+# Those are also used to evaluate constant inputs.
 METHOD_TO_OPERATOR = {
+    # "bool": lambda x: x.__bool__(),
     "pos": operator.pos,
     "abs": operator.abs,
     "add": operator.add,
@@ -449,6 +456,7 @@ unary_magic_methods = {
     "neg",
     "sym_not",
     "pos",
+    # "bool",
 }
 
 
@@ -524,6 +532,7 @@ always_bool_magic_methods = {
     "sym_not",
     "is_non_overlapping_and_dense",
     "is_integer",
+    # "bool",
 }
 
 # Methods that have a `__foo__` as well as `__rfoo__`
@@ -726,6 +735,12 @@ def _sympy_is_integer(a):
     return sympy.Eq(sympy.floor(a), a)
 
 
+def _sympy_bool(a):
+    return operator.invert(_sympy_eq(a, 0))
+
+
+# Those methods are used to perform symbolic evaluation on the input expressions,
+# they are expected to return sympy expressions.
 magic_methods = {
     **reflectable_magic_methods,
     "sym_not": operator.invert,
@@ -746,6 +761,7 @@ magic_methods = {
     "abs": _sympy_abs,
     "round": _sympy_round,
     "is_integer": _sympy_is_integer,
+    # "bool": _sympy_bool,
 }
 
 
@@ -923,7 +939,7 @@ def _make_node_magic(method, func):
         assert isinstance(other, SymNode)
         # TODO: consider constant prop here
         try:
-            out = func(self.expr, other.expr)
+            out = func(self.expr, other.expr).simplify()
         except Exception:
             log.warning("failed to eval %s(%s, %s)", method, self.expr, other.expr)
             raise

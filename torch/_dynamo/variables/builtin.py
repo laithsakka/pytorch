@@ -164,6 +164,7 @@ class BuiltinVariable(VariableTracker):
     @functools.lru_cache(None)
     def _fx_graph_functions():
         fns = {
+            operator.truth,
             operator.abs,
             operator.pos,
             operator.neg,
@@ -843,6 +844,24 @@ class BuiltinVariable(VariableTracker):
             tx, [arg, ConstantVariable.create("__abs__")], {}
         )
         return abs_method.call_function(tx, [], {})
+
+    def call_truth(self, tx, arg: "VariableTracker"):
+        if isinstance(arg, SymNodeVariable):
+            return SymNodeVariable.create(
+                tx,
+                tx.output.create_proxy(
+                    "call_function", operator.truth, *proxy_args_kwargs([arg], {})
+                ),
+                sym_num=None,
+            )
+        else:
+            return SymNodeVariable.create(
+                tx,
+                tx.output.create_proxy(
+                    "call_function", operator.truth, *proxy_args_kwargs([arg], {})
+                ),
+                sym_num=None,
+            )
 
     def call_pos(self, tx, arg: "VariableTracker"):
         # Call arg.__pos__()

@@ -446,7 +446,6 @@ def sym_float(a):
         return a.__sym_float__()
     return py_float(a)  # type: ignore[operator]
 
-
 def sym_int(a):
     r""" SymInt-aware utility for int casting.
 

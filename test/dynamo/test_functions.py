@@ -1720,13 +1720,13 @@ class FunctionTests(torch._dynamo.test_case.TestCase):
                 self.assertEqual(opt_fn(x), fn(x))
 
     def test_pos(self):
-        def fn(x, y):
-            return operator.pos(x) * operator.pos(y)
+        def fn(e, y):
+            return operator.pos(e) * operator.pos(y)
 
-        opt_fn = torch.compile(fullgraph=True, dynamic=True)(fn)
+        opt_fn = torch.compile(fullgraph=True, backend=eager, dynamic=True)(fn)
 
-        def test(x, y):
-            self.assertEqual(opt_fn(x, y), fn(x, y))
+        def test(e, y):
+            self.assertEqual(opt_fn(e, y), fn(e, y))
 
         test(torch.ones(4), 1)
         test(1, torch.ones(4))
@@ -1734,6 +1734,51 @@ class FunctionTests(torch._dynamo.test_case.TestCase):
         test(-1.1, 1.1)
         test(True, False)
         test(torch.ones(4, dtype=torch.float32), 1.1)
+
+    def test_truth_constant_inputs(self):
+        # torch._dynamo.config.capture_scalar_outputs = True
+        modes = ["eager", "aot_eager","inductor"]
+        bool_options = [False]
+        for backend_v, dynamic_v in itertools.product(modes, bool_options):
+            print("testing",backend_v,  dynamic_v, "********************************")
+            torch._dynamo.reset()
+            def test1(x, y):
+                def fn(x, y):
+                    return operator.truth(x) and operator.truth(y)
+
+                opt_fn = torch.compile(
+                    fullgraph=True, backend=backend_v, dynamic=dynamic_v
+                )(fn)
+                print(opt_fn(x, y))
+                self.assertEqual(opt_fn(x, y), fn(x, y))
+
+
+            test1(0, 123)
+            test1(121, 123)
+            test1(0, 123)
+            test1(0, 1)
+            test1(1, 1)
+            test1(True, 1)
+            test1(False, 1)
+            test1(1.1, False)
+            test1(1.1, True)
+
+            def test2(x):
+                def fn(x):
+                    return operator.truth(x)
+
+                opt_fn = torch.compile(
+                    fullgraph=True, backend=backend_v, dynamic=dynamic_v
+                )(fn)
+                self.assertEqual(opt_fn(x), fn(x))
+
+            test2(-1)
+            test2(10)
+            test2(1)
+            test2(0)
+            test2(True)
+            test2(False)
+            test2(1.1)
 
     def test_unary_fold_op(self):
         for op in (operator.abs, abs, operator.neg, operator.pos, operator.truth):
